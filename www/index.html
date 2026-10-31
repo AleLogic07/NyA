@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NyA</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eef3fa;--card:#fff;--ink:#14213a;--mute:#5b6a86;--line:#d3ddee;--accent:#1f6f9c;--on:#fff;--soft:#e2edf8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1628;--card:#16223a;--ink:#e8eefb;--mute:#97a5c4;--line:#2a3a5c;--accent:#8fd3f4;--on:#0b1a2a;--soft:#1d2c4a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1628;--card:#16223a;--ink:#e8eefb;--mute:#97a5c4;--line:#2a3a5c;--accent:#8fd3f4;--on:#0b1a2a;--soft:#1d2c4a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 96px}
+h1{font:600 1.7rem/1.15 Georgia,"Times New Roman",serif;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 18px;font-size:.95rem}
+.tabs{display:flex;gap:6px;background:var(--soft);padding:4px;border-radius:12px;margin-bottom:16px}
+.tabs button{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-weight:600;padding:10px;border-radius:9px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--card);color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+fieldset{border:1px solid var(--line);border-radius:14px;background:var(--card);margin:0 0 14px;padding:12px 14px 14px}
+legend{font-weight:600;padding:0 6px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+label{display:flex;flex-direction:column;gap:3px;font-size:.82rem;color:var(--mute)}
+input,select{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.res{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.big{font:600 2.6rem/1 Georgia,"Times New Roman",serif;color:var(--accent);margin:2px 0 2px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:.95rem}
+.row span:first-child{color:var(--mute)}
+.row b{font-variant-numeric:tabular-nums}
+.btn{width:100%;margin-top:12px;border:0;border-radius:10px;background:var(--accent);color:var(--on);font:inherit;font-weight:700;padding:12px;cursor:pointer}
+.note{color:var(--mute);font-size:.85rem;margin:10px 0 0}
+[hidden]{display:none!important}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:space-around;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);font-size:.9rem;color:var(--mute)}
+.bar b{margin-left:8px;color:var(--accent);font:600 1.2rem Georgia,"Times New Roman",serif}
+.hit{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;margin-bottom:10px}
+.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);align-self:end}
+.chk input{width:auto}
+.del{border:0;background:none;color:var(--mute);font:inherit;font-size:.85rem;margin-top:8px;padding:6px 0;cursor:pointer;text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+<h1>Calculadora de daño</h1>
+<p class="sub">Daño esperado por golpe y por rotación, y reparto óptimo de substats.</p>
+
+<div class="tabs" role="tablist">
+<button role="tab" id="t1" aria-selected="true">Calcular</button>
+<button role="tab" id="t2" aria-selected="false">Optimizar</button>
+<button role="tab" id="t3" aria-selected="false">Rotación</button>
+</div>
+
+<fieldset><legend>Mis configuraciones</legend>
+<div class="g">
+<label>Nombre<input id="svn" placeholder="Ej. Diluc vaporizar"></label>
+<label>Guardadas<select id="svl"></select></label>
+</div>
+<div class="g" style="margin-top:10px">
+<button type="button" class="btn" id="svs" style="margin:0">Guardar actual</button>
+<button type="button" class="btn" id="svc" style="margin:0;background:var(--soft);color:var(--ink)">Cargar</button>
+</div>
+<button type="button" class="del" id="svd">Borrar la seleccionada</button>
+<p class="note" id="svm" aria-live="polite">Lo que cambies se recuerda solo en este navegador.</p>
+</fieldset>
+
+<form onsubmit="return false" id="stats">
+<fieldset><legend>Datos del juego</legend><div class="g">
+<label>Personaje<select id="dc"></select></label>
+<label>Arma<select id="dw"></select></label>
+<label>Set de artefactos A (2 piezas)<select id="sa"></select></label>
+<label>Set de artefactos B (2 piezas)<select id="sb"></select></label>
+</div>
+<button type="button" class="btn" id="load">Cargar en la calculadora</button>
+<p class="note">Carga nivel 90 sin substats: ATQ base, pluma de 311 ATQ, ascensión, arma y bonus de los sets. Luego ajusta a mano. No incluye pasivos de armas ni sets de 4 piezas. Verifica los valores contra el juego.</p>
+<label style="margin-top:12px">Importar datos (archivo JSON)<input id="imf" type="file" accept=".json,application/json"></label>
+<button type="button" class="del" id="imr">Volver a los datos de ejemplo</button>
+<p class="note" id="imm" aria-live="polite">Un archivo importado carga personajes, armas, sets y talentos. Cada talento trae su estadística de escalado (ATQ, VIDA, DEF o Maestría), incluso si escala con dos.</p>
+</fieldset>
+<fieldset><legend>Personaje</legend><div class="g" id="f-char"></div>
+<label style="margin-top:10px">El talento de la pestaña Calcular escala con<select id="scs"><option value="atk">ATQ</option><option value="hp">VIDA</option><option value="def">DEF</option><option value="em">Maestría Elemental</option></select></label></fieldset>
+<fieldset><legend>Enemigo</legend><div class="g" id="f-enemy"></div>
+<label style="margin-top:10px">Contenido de fin de juego (ajusta el nivel)<select id="eg"><option value="">Personalizado</option>
+<option value="95">Abismo Espiral, piso 12, cámara 1 · Nv. 95</option>
+<option value="98">Abismo Espiral, piso 12, cámara 2 · Nv. 98</option>
+<option value="100">Abismo Espiral, piso 12, cámara 3 · Nv. 100</option>
+<option value="40">Estigia, Normal · Nv. 40</option>
+<option value="70">Estigia, Advancing · Nv. 70</option>
+<option value="90">Estigia, Hard · Nv. 90</option>
+<option value="100">Estigia, Menacing · Nv. 100</option>
+<option value="105">Estigia, Fearless · Nv. 105</option>
+<option value="110">Estigia, Dire · Nv. 110</option>
+</select></label>
+<p class="note">Solo cambia el nivel del enemigo. La resistencia depende de cada enemigo: ponla a mano.</p></fieldset>
+<fieldset><legend>Reacción</legend><div class="g">
+<label>Tipo<select id="rx">
+<option value="0">Ninguna</option>
+<option value="1.5">Vaporizar (Pyro sobre Hydro) ×1.5</option>
+<option value="2">Vaporizar (Hydro sobre Pyro) ×2</option>
+<option value="2">Fundir (Pyro sobre Cryo) ×2</option>
+<option value="1.5">Fundir (Cryo sobre Pyro) ×1.5</option>
+</select></label>
+<label>Bonus de reacción %<input id="rbonus" type="number" inputmode="decimal" value="0"></label>
+</div></fieldset>
+</form>
+
+<section id="p1" class="res" aria-live="polite">
+<div style="color:var(--mute);font-size:.9rem">Daño promedio</div>
+<div class="big" id="avg">0</div>
+<div class="row"><span>Sin CRIT</span><b id="nc">0</b></div>
+<div class="row"><span>Con CRIT</span><b id="c">0</b></div>
+<div class="row"><span>Estadística que escala</span><b id="atk">0</b></div>
+<div class="row"><span>Factor de defensa</span><b id="df">0</b></div>
+<div class="row"><span>Factor de resistencia</span><b id="rf">0</b></div>
+<div class="row"><span>Multiplicador de reacción</span><b id="rm">0</b></div>
+</section>
+
+<section id="p2" class="res" hidden>
+<label>Tiradas de substat a repartir<input id="n" type="number" inputmode="numeric" min="0" max="30" value="20"></label>
+<label class="chk" style="margin-top:10px"><input type="checkbox" id="usar" checked>Optimizar el daño total de la rotación</label>
+<button class="btn" id="go">Buscar mejor reparto</button>
+<div id="out" style="margin-top:12px"></div>
+<p class="note">Usa las estadísticas de arriba como punto de partida y prueba todas las combinaciones entre Prob. CRIT, Daño CRIT, Maestría y el porcentaje de la estadística que escala tu rotación (ATQ, VIDA o DEF). Valores de una tirada promedio de artefacto de 5 estrellas; no se limitan las mejoras por pieza.</p>
+</section>
+
+<section id="p3" hidden>
+<fieldset id="tl" hidden><legend>Talentos del personaje</legend>
+<div class="g"><label>Talento<select id="tsel"></select></label><label>Nivel<select id="tlv"></select></label></div>
+<button type="button" class="btn" id="tadd" style="background:var(--soft);color:var(--ink)">Agregar a la rotación</button>
+</fieldset>
+<div id="hits"></div>
+<button type="button" class="btn" id="addhit" style="margin:0 0 12px;background:var(--soft);color:var(--ink)">Agregar golpe</button>
+<div class="res">
+<label>Duración de la rotación (s)<input id="dur" type="number" inputmode="decimal" value="20"></label>
+<div class="big" id="rt" style="margin-top:12px">0</div>
+<div style="color:var(--mute);font-size:.9rem">Daño total de la rotación</div>
+<div class="row"><span>DPS</span><b id="dps">0</b></div>
+<div id="rrows"></div>
+</div>
+<p class="note">Los multiplicadores iniciales son de ejemplo: cámbialos por los de tu talento. Usa las estadísticas y la reacción de arriba. El bonus extra es para daño propio de un talento.</p>
+</section>
+</main>
+
+<div class="bar" aria-live="polite"><span>Golpe<b id="b1">0</b></span><span>Rotación<b id="b2">0</b></span></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const CHAR=[["lvl","Nivel del personaje",90],["baseAtk","ATQ base (personaje + arma)",900],["atkP","ATQ %",40],["atkF","ATQ plano",311],["tal","Multiplicador del talento %",250],["dmg","Bonus de daño %",46.6],["cr","Prob. CRIT %",60],["cd","Daño CRIT %",120],["em","Maestría Elemental",100],["baseHp","VIDA base",15000],["hpP","VIDA %",0],["hpF","VIDA plana",4780],["baseDef","DEF base",800],["dfP","DEF %",0],["dfF","DEF plana",0]];
+const ENEMY=[["elvl","Nivel del enemigo",90],["res","Resistencia %",10],["shred","Reducción de resistencia %",0],["defRed","Reducción de DEF %",0]];
+const IDS=[...CHAR,...ENEMY].map(f=>f[0]).concat("rbonus");
+const mk=(box,list)=>$(box).innerHTML=list.map(([i,l,v])=>`<label>${l}<input id="${i}" type="number" inputmode="decimal" step="any" value="${v}"></label>`).join("");
+mk("f-char",CHAR);mk("f-enemy",ENEMY);
+
+const read=()=>({...Object.fromEntries(IDS.map(i=>[i,parseFloat($(i).value)||0])),sc:$("scs").value});
+const fmt=n=>Math.round(n).toLocaleString("es-MX");
+const pct=n=>n.toFixed(3);
+
+const stat=(s,k)=>k==="hp"?s.baseHp*(1+s.hpP/100)+s.hpF:k==="def"?s.baseDef*(1+s.dfP/100)+s.dfF:k==="em"?s.em:s.baseAtk*(1+s.atkP/100)+s.atkF;
+function calc(s,rx,cmp){
+  const atk=stat(s,s.sc||"atk");
+  const bonus=1+s.dmg/100;
+  const def=(s.lvl+100)/((s.lvl+100)+(s.elvl+100)*(1-s.defRed/100));
+  const r=(s.res-s.shred)/100;
+  const rf=r<0?1-r/2:r<0.75?1-r:1/(1+4*r);
+  const rm=rx?rx*(1+2.78*s.em/(s.em+1400)+s.rbonus/100):1;
+  const cr=Math.min(Math.max(s.cr,0),100)/100;
+  const raw=(cmp||[[s.sc||"atk",s.tal]]).reduce((a,[k,m])=>a+stat(s,k)*m/100,0);
+  const base=raw*bonus*def*rf*rm;
+  return{atk,def,rf,rm,nc:base,c:base*(1+s.cd/100),avg:base*(1+cr*s.cd/100)};
+}
+
+function update(){
+  const k=calc(read(),parseFloat($("rx").value));
+  $("avg").textContent=$("b1").textContent=fmt(k.avg);$("nc").textContent=fmt(k.nc);$("c").textContent=fmt(k.c);
+  $("atk").textContent=fmt(k.atk);$("df").textContent=pct(k.def);$("rf").textContent=pct(k.rf);$("rm").textContent=pct(k.rm);
+}
+$("stats").addEventListener("input",update);update();
+
+let CH={"Diluc":{el:"Pyro",atk:335,cr:19.2},"Keqing":{el:"Electro",atk:323,cd:38.4},"Xiangling":{el:"Pyro",atk:225,em:96},"Ganyu":{el:"Cryo",atk:335,cd:38.4},"Ayaka":{el:"Cryo",atk:342,cd:38.4},"Yoimiya":{el:"Pyro",atk:323,cr:19.2}};
+let WP={"Ninguna":{atk:0},"Mistsplitter Reforged":{atk:674,cd:44.1},"Skyward Harp":{atk:674,cr:22.1},"Amos’ Bow":{atk:608,atkP:49.6},"Wolf’s Gravestone":{atk:608,atkP:49.6}};
+let ST={"Ninguno":{},"Gladiator’s Finale":{atkP:18},"Shimenawa’s Reminiscence":{atkP:18},"Wanderer’s Troupe":{em:80},"Crimson Witch of Flames":{dmg:15,el:"Pyro"},"Blizzard Strayer":{dmg:15,el:"Cryo"},"Heart of Depth":{dmg:15,el:"Hydro"}};
+const opts=(id,o)=>$(id).innerHTML=Object.keys(o).map(k=>`<option>${k}</option>`).join("");
+opts("dc",CH);opts("dw",WP);opts("sa",ST);opts("sb",ST);
+$("load").onclick=()=>{
+  const c=CH[$("dc").value],w=WP[$("dw").value],sets=[ST[$("sa").value],ST[$("sb").value]];
+  const sum=k=>(c[k]||0)+(w[k]||0)+sets.reduce((t,s)=>t+((s.el&&s.el!==c.el)?0:(s[k]||0)),0);
+  const v={lvl:90,baseAtk:c.atk+w.atk,atkP:sum("atkP"),atkF:311,cr:5+sum("cr"),cd:50+sum("cd"),em:sum("em"),dmg:sum("dmg")};
+  if(c.hp)Object.assign(v,{baseHp:c.hp,baseDef:c.def||0,hpP:sum("hpP"),dfP:sum("dfP"),hpF:4780});
+  for(const k in v)$(k).value=+v[k].toFixed(1);
+  update();
+};
+
+const V={atkP:4.96,hpP:4.96,dfP:6.2,cr:3.31,cd:6.61,em:19.82};
+const LBL={atkP:"ATQ %",hpP:"VIDA %",dfP:"DEF %",cr:"Prob. CRIT",cd:"Daño CRIT",em:"Maestría Elemental"};
+$("go").onclick=()=>{
+  const s=read(),rx=parseFloat($("rx").value);
+  const n=Math.max(0,Math.min(30,parseInt($("n").value)||0));
+  const whole=$("usar").checked;
+  const sc=t=>whole?rot(t,rx).total:calc(t,rx).avg;
+  const used=new Set(whole?hits.flatMap(h=>cmpOf(h).map(c=>c[0])):[s.sc]);
+  const keys=["cr","cd","em"];
+  if(used.has("def"))keys.unshift("dfP");
+  if(used.has("hp"))keys.unshift("hpP");
+  if(used.has("atk"))keys.unshift("atkP");
+  const base=sc(s),cur={};
+  let best={v:base,x:{}};
+  const test=()=>{
+    const t={...s};
+    for(const k of keys)t[k]=s[k]+cur[k]*V[k];
+    const v=sc(t);
+    if(v>best.v)best={v,x:{...cur}};
+  };
+  const rec=(i,left)=>{
+    if(i===keys.length-1){cur[keys[i]]=left;test();return}
+    for(let a=0;a<=left;a++){cur[keys[i]]=a;rec(i+1,left-a)}
+  };
+  rec(0,n);
+  const gain=base?(best.v/base-1)*100:0;
+  const rows=keys.map(k=>`<div class="row"><span>${LBL[k]}</span><b>${best.x[k]||0} tiradas</b></div>`).join("");
+  $("out").innerHTML=`<div style="color:var(--mute);font-size:.9rem">Daño con el mejor reparto</div>
+  <div class="big">${fmt(best.v)}</div>
+  <div class="row"><span>Sin tiradas</span><b>${fmt(base)}</b></div>
+  <div class="row"><span>Mejora</span><b>+${gain.toFixed(1)}%</b></div>${rows}`;
+};
+
+const tab=i=>{$("p1").hidden=i!==1;$("stats").hidden=false;$("p2").hidden=i!==2;$("p3").hidden=i!==3;
+  $("t1").setAttribute("aria-selected",i===1);$("t2").setAttribute("aria-selected",i===2);$("t3").setAttribute("aria-selected",i===3)};
+$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);$("t3").onclick=()=>tab(3);
+
+let hits=[{n:'Ataque normal',m:90,h:4,x:0,r:0},{n:'Habilidad elemental',m:200,h:1,x:0,r:1},{n:'Ráfaga elemental',m:400,h:1,x:0,r:1}];
+const esc=s=>s.replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const SO=(v,none)=>(none?[["","—"]]:[]).concat([["atk","ATQ"],["hp","VIDA"],["def","DEF"],["em","Maestría"]]).map(([k,l])=>`<option value='${k}'${k===v?" selected":""}>${l}</option>`).join("");
+const cmpOf=t=>[[t.s||"atk",t.m],...(t.s2?[[t.s2,t.m2||0]]:[])];
+const rot=(s,rx)=>{const rows=hits.map(t=>({n:t.n,v:calc({...s,dmg:s.dmg+t.x},t.r?rx:0,cmpOf(t)).avg*t.h}));return{rows,total:rows.reduce((a,b)=>a+b.v,0)}};
+const drawHits=()=>{$('hits').innerHTML=hits.map((t,i)=>`<div class='hit'><div class='g'><label style='grid-column:1/-1'>Nombre<input data-i='${i}' data-k='n' value='${esc(t.n)}'></label><label>Escala con<select data-i='${i}' data-k='s'>${SO(t.s||'atk')}</select></label><label>Multiplicador %<input type='number' inputmode='decimal' step='any' data-i='${i}' data-k='m' value='${t.m}'></label><label>Segundo escalado<select data-i='${i}' data-k='s2'>${SO(t.s2||'',1)}</select></label><label>Multiplicador 2 %<input type='number' inputmode='decimal' step='any' data-i='${i}' data-k='m2' value='${t.m2||0}'></label><label>Golpes<input type='number' inputmode='numeric' data-i='${i}' data-k='h' value='${t.h}'></label><label>Bonus extra %<input type='number' inputmode='decimal' step='any' data-i='${i}' data-k='x' value='${t.x}'></label><label class='chk'><input type='checkbox' data-i='${i}' data-k='r' ${t.r?'checked':''}>Con reacción</label></div><button type='button' class='del' data-del='${i}'>Quitar golpe</button></div>`).join('')};
+const showRot=()=>{const r=rot(read(),parseFloat($('rx').value)),d=parseFloat($('dur').value)||0;$('rt').textContent=$('b2').textContent=fmt(r.total);$('dps').textContent=d?fmt(r.total/d):'—';$('rrows').innerHTML=r.rows.map(x=>`<div class='row'><span>${esc(x.n)}</span><b>${fmt(x.v)}</b></div>`).join('')};
+$('hits').addEventListener('input',e=>{const t=e.target,h=hits[t.dataset.i],k=t.dataset.k;if(!h)return;h[k]=(k==='n'||k==='s'||k==='s2')?t.value:k==='r'?+t.checked:(parseFloat(t.value)||0);showRot()});
+$('hits').addEventListener('click',e=>{const i=e.target.dataset.del;if(i===undefined)return;hits.splice(+i,1);drawHits();showRot()});
+$('addhit').onclick=()=>{hits.push({n:'Golpe nuevo',m:100,h:1,x:0,r:0});drawHits();showRot()};
+$('stats').addEventListener('input',showRot);$('dur').addEventListener('input',showRot);$('load').addEventListener('click',showRot);
+drawHits();showRot();
+
+const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
+const say=t=>{$('svm').textContent=t};
+const SEL=['dc','dw','sa','sb'];
+const snap=()=>({s:read(),rxi:$('rx').selectedIndex,dur:$('dur').value,n:$('n').value,usar:$('usar').checked,sel:SEL.map(i=>$(i).value),hits});
+const apply=st=>{
+  if(!st||!st.s)return;
+  IDS.forEach(k=>{const v=parseFloat(st.s[k]);if(!isNaN(v))$(k).value=v});
+  if(['atk','hp','def','em'].includes(st.s.sc))$('scs').value=st.s.sc;
+  if(Number.isInteger(st.rxi)&&st.rxi>=0&&st.rxi<$('rx').options.length)$('rx').selectedIndex=st.rxi;
+  $('dur').value=parseFloat(st.dur)||20;$('n').value=parseInt(st.n)||0;$('usar').checked=!!st.usar;
+  SEL.forEach((i,j)=>{const v=st.sel&&st.sel[j];if([...$(i).options].some(o=>o.value===v))$(i).value=v});
+  if(Array.isArray(st.hits))hits=st.hits.map(h=>({n:String(h.n??''),s:['atk','hp','def','em'].includes(h.s)?h.s:'atk',m:+h.m||0,s2:['atk','hp','def','em'].includes(h.s2)?h.s2:'',m2:+h.m2||0,h:+h.h||0,x:+h.x||0,r:h.r?1:0}));
+  drawHits();update();showRot();drawTalents();
+};
+const autosave=()=>LS.set('gc:auto',snap());
+const getSaves=()=>{const a=LS.get('gc:saves');return Array.isArray(a)?a:[]};
+const drawSaves=sel=>{const a=getSaves();$('svl').innerHTML=a.length?a.map(x=>`<option>${esc(String(x.name))}</option>`).join(''):'<option value="">(vacío)</option>';if(sel)$('svl').value=sel};
+$('svs').onclick=()=>{const name=$('svn').value.trim().slice(0,40);if(!name)return say('Escribe un nombre para guardar.');const a=getSaves().filter(x=>x.name!==name);a.push({name,st:snap()});say(LS.set('gc:saves',a)?`Guardado: ${name}`:'Este navegador no permite guardar.');drawSaves(name)};
+$('svc').onclick=()=>{const x=getSaves().find(x=>x.name===$('svl').value);if(!x)return say('No hay nada que cargar.');apply(x.st);say(`Cargado: ${x.name}`)};
+$('svd').onclick=()=>{const v=$('svl').value;if(!v)return say('No hay nada que borrar.');LS.set('gc:saves',getSaves().filter(x=>x.name!==v));drawSaves();say(`Borrado: ${v}`)};
+const DEF={CH:{...CH},WP:{...WP},ST:{...ST}};
+const imsg=t=>{$('imm').textContent=t};
+const num=v=>Number.isFinite(+v)?+v:0;
+const KS=['atk','atkP','cr','cd','em','dmg','hp','def','hpP','dfP'];
+const pick=(o,ks)=>Object.fromEntries(ks.map(k=>[k,num(o&&o[k])]));
+const byName=o=>Object.entries(o||{}).sort(([a],[b])=>a.localeCompare(b));
+const fillSel=()=>{opts('dc',CH);opts('dw',WP);opts('sa',ST);opts('sb',ST);drawTalents()};
+const drawTalents=()=>{
+  const c=CH[$('dc').value],t=(c&&c.talents)||[];
+  $('tl').hidden=!t.length;
+  if(!t.length)return;
+  const first=!$('tlv').options.length;
+  if(first){$('tlv').innerHTML=Array.from({length:15},(_,i)=>`<option>${i+1}</option>`).join('');$('tlv').value='10'}
+  $('tsel').innerHTML=t.map((x,i)=>`<option value='${i}'>${esc(x.n)}</option>`).join('');
+};
+const useData=d=>{
+  if(!d||typeof d!=='object'||!d.chars||typeof d.chars!=='object')throw new Error('falta la sección chars');
+  const ch={},wp={Ninguna:{atk:0}},st={Ninguno:{}};
+  for(const [n,c] of byName(d.chars))ch[n]={...pick(c,KS),el:String(c.el||''),talents:(Array.isArray(c.talents)?c.talents:[]).slice(0,40).map(t=>({n:String(t.n).slice(0,80),h:Math.max(1,Math.round(num(t.h))||1),c:(Array.isArray(t.c)?t.c:[{s:'atk',p:t.p}]).slice(0,2).map(q=>({s:['atk','hp','def','em'].includes(q&&q.s)?q.s:'atk',p:(Array.isArray(q&&q.p)?q.p:[]).slice(0,15).map(num)}))}))};
+  for(const [n,w] of byName(d.weapons))wp[n]=pick(w,KS);
+  for(const [n,s] of byName(d.sets))st[n]={...pick(s,KS),...(s&&s.el?{el:String(s.el)}:{})};
+  const total=Object.keys(ch).length;
+  if(!total)throw new Error('no hay personajes');
+  CH=ch;WP=wp;ST=st;fillSel();
+  return total;
+};
+$('imf').onchange=async e=>{
+  const f=e.target.files[0];
+  if(!f)return;
+  if(f.size>8e6){e.target.value='';return imsg('El archivo pesa más de 8 MB.')}
+  try{
+    const d=JSON.parse(await f.text());
+    const n=useData(d);
+    imsg(`Importados ${n} personajes.`+(LS.set('gc:data',d)?'':' No se pudieron guardar en el navegador: tendrás que importarlos otra vez.'));
+  }catch(err){imsg('No se pudo leer el archivo: '+err.message)}
+  e.target.value='';
+};
+$('imr').onclick=()=>{
+  CH={...DEF.CH};WP={...DEF.WP};ST={...DEF.ST};fillSel();
+  try{localStorage.removeItem('gc:data')}catch(e){}
+  imsg('Datos de ejemplo restaurados.');
+};
+$('dc').addEventListener('input',drawTalents);
+$('tadd').onclick=()=>{
+  const c=CH[$('dc').value],t=c&&c.talents&&c.talents[$('tsel').value];
+  if(!t)return;
+  const L=+$('tlv').value,v=q=>+((q.p[Math.min(L,q.p.length)-1]??0).toFixed(1));
+  const [a,b]=t.c;
+  hits.push({n:t.n,s:a?a.s:'atk',m:a?v(a):0,s2:b?b.s:'',m2:b?v(b):0,h:t.h,x:0,r:0});drawHits();showRot();
+};
+try{const sv=LS.get('gc:data');if(sv)useData(sv)}catch(e){}
+apply(LS.get('gc:auto'));drawSaves();
+['input','click'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(autosave,0)));
+$('eg').onchange=()=>{if(!$('eg').value)return;$('elvl').value=$('eg').value;update();showRot();autosave()};
+$('elvl').addEventListener('input',()=>{$('eg').value=''});
+</script>
+</body>
+</html>
